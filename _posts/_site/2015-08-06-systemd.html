@@ -1,0 +1,244 @@
+<h2 id="systemd">なぜsystemdを学ぶのか?</h2>
+
+<h3 id="centos-67">CentOS 6系から7系へ</h3>
+
+<ul>
+  <li>6系はリリースから既に4年。</li>
+  <li>他のディストリビューションと比べてもサポートは長い。</li>
+  <li>しかし、遠くない将来、7系へ移行する時が来る。</li>
+  <li>6.x
+    <ul>
+      <li>リリース：2011/07/10</li>
+      <li>サポート：2020/11/30まで</li>
+    </ul>
+  </li>
+  <li>7.x
+    <ul>
+      <li>リリース：2014/07/07</li>
+      <li>サポート：2024/06/30まで</li>
+    </ul>
+  </li>
+</ul>
+
+<p>＊<a href="https://en.wikipedia.org/wiki/CentOS">https://en.wikipedia.org/wiki/CentOS</a></p>
+
+<h3 id="section">それで？</h3>
+
+<ul>
+  <li>CentOS 7系のinitシステムはsystemdです。</li>
+  <li><a href="http://gihyo.jp/admin/clip/01/linux_dt/201402/14">Debianも時期リリースからsystemdを採用します。</a></li>
+  <li>DebianベースのUbuntuも前向きに対応検討中です。</li>
+</ul>
+
+<h3 id="section-1">つまり</h3>
+
+<ul>
+  <li>SysV initに依存した運用知識は数年の内に陳腐化する。<br />
+=&gt; さよなら <code>sudo service hoge start</code>,<code>chkconfig on</code>,<code>/etc/init.d/～</code>, etc.</li>
+</ul>
+
+<h2 id="systemd-1">systemdの概要</h2>
+
+<p>管理ツールが変われば関連する全てが変わる。</p>
+
+<h3 id="section-2">サービスの起動</h3>
+
+<p>今昔</p>
+
+<p><code>
+$ sudo service httpd start
+$ sudo /etc/init.d/httpd start
+</code>
+<br />
+systemd</p>
+
+<p><code>
+$ sudo systemdctl start httpd.service
+</code></p>
+
+<h3 id="sysv-init">SysV init</h3>
+
+<p><strong>サービスのトラッキング =&gt; PIDファイルのみ</strong></p>
+
+<p>今昔</p>
+
+<p><code>
+$ sudo service httpd start
+$ sudo /etc/init.d/httpd start
+</code>
+プロセスのPIDファイルが作られる。</p>
+
+<p><code>
+/var/run/httpd/httpd.pid
+</code>
+statusはPIDファイルで確認。</p>
+
+<p><code>
+$ sudo service httpd status
+httpd (pid  XXXXX) is running...
+</code></p>
+
+<p>もしPIDファイルを消したら？</p>
+
+<p><code>
+$ sudo rm /var/run/httpd/httpd.pid
+</code>
+起動していても正常にトラッキングできなくなる。</p>
+
+<p><code>
+$ sudo service httpd status
+httpd dead but subsys locked
+</code>
+停止も出来ない。</p>
+
+<p><code>
+$ sudo service httpd stop
+Stopping httpd:                                            [FAILED]
+</code>
+もちろんプロセスは変わらずあるのでkillするしかない。</p>
+
+<p><code>
+$ sudo pkill -9 httpd
+</code></p>
+
+<h3 id="systemd-2">systemd</h3>
+
+<ul>
+  <li>cgroupを使ったプロセスリソース管理。</li>
+  <li>子プロセスまで全ての状態を監視。</li>
+  <li>プロセス停止時に自動再起動を設定することも可能。</li>
+  <li>syslog代替のjournaldでバイナリログを記録。</li>
+  <li>SysVinitでは/etc/init.d/<service>のシェルスクリプト。<br />
+=&gt; 独自定義で何でも実行可能<br />
+=&gt; systemdだとstart/stop/restart/reload以外は不可。</service></li>
+</ul>
+
+<h3 id="cgroupcontrol-groups">cgroup(Control Groups)</h3>
+
+<ul>
+  <li>Linuxのプロセスごとにリソースを管理する機能。</li>
+  <li>具体的にはCPUコア数、メモリ容量等を制限可能。</li>
+  <li>参考リンク： [Control Groups (cgroups)](http://enakai00.hatenablog.com/entry/20110605/1307240161/</li>
+</ul>
+
+<h3 id="unit">Unit</h3>
+
+<ul>
+  <li>systemdは起動処理（↓）をUnitという単位で管理する。
+    <ul>
+      <li>service: サービス起動</li>
+      <li>target: Unitをグループ化する単位</li>
+      <li>mount: ファイルシステムのマウント</li>
+      <li>swap: swap領域を有効化</li>
+      <li>device: ディスクデバイス</li>
+    </ul>
+  </li>
+  <li>Unit間の依存関係も設定することができる。</li>
+  <li>依存のないものは並行で処理を走らせ起動を高速化。</li>
+</ul>
+
+<h3 id="section-3">起動と有効化</h3>
+
+<h4 id="section-4">サービス起動</h4>
+<p>以前</p>
+
+<p><code>
+$ sudo service httpd start
+</code>
+これから（Unitを表す拡張子をつける）</p>
+
+<p><code>
+$ sudo systemctl start httpd.service
+</code></p>
+
+<h4 id="section-5">サーバ起動時プロセス起動</h4>
+<p>以前</p>
+
+<p><code>
+$ sudo chkconfig httpd on
+</code>
+これから（Unitを表す拡張子をつける）</p>
+
+<p><code>
+$ sudo systemctl enable httpd.service
+</code></p>
+
+<h3 id="section-6">ステータス確認</h3>
+<p>以前･･･PIDと実行中かどうかのみ</p>
+
+<p><code>
+$ sudo service httpd status
+httpd (pid  XXXXX) is running...
+</code>
+これから･･･起動日時や子プロセスなどなど</p>
+
+<p><code>
+$ sudo systemctl status httpd.service
+</code></p>
+
+<h3 id="unit-1">Unitに関する設定</h3>
+
+<p>デフォルトの設定は以下のパスにあります。
+Restartオプションを追加すると停止時に自動再起動がかかります。</p>
+
+<p><code>
+/usr/lib/systemd/system/httpd.service
+</code></p>
+
+<h3 id="section-7">ログ</h3>
+
+<p>journalctlによるログ確認（デフォルトでは全て出力）</p>
+
+<p><code>
+$ sudo journalctl
+</code>
+特定のUnitのログのみを確認する場合には「-u」をつける。</p>
+
+<p><code>
+$ sudo journalctl -u httpd.service
+</code></p>
+
+<h3 id="section-8">タイムゾーンの変更方法</h3>
+
+<p><code>
+$ timedatectl list-timezones  # timezone一覧
+$ sudo timedatectl set-timezone Asia/Tokyo
+</code></p>
+
+<h3 id="section-9">その他便利機能</h3>
+<p>cgroup確認</p>
+
+<p><code>
+$ systemd-cgls
+</code>
+Unitごとの起動時間表示</p>
+
+<p><code>
+$ systemd-analyze blame
+</code>
+Unitごとのリソース利用状況表示</p>
+
+<p><code>
+$ systemd-cgtop
+</code>
+Unit間の依存関係確認</p>
+
+<p><code>
+$ systemctl list-dependencies httpd.service
+</code></p>
+
+<h2 id="section-10">結論</h2>
+
+<ul>
+  <li>systemdを使ったOSは同じディストリビューションでももはや違うOSと思った方が良い。</li>
+  <li>systemdは今後アップデートされつつ広がっていく。</li>
+  <li>コンテナ技術（docker）との融合にも要注目。</li>
+</ul>
+
+<h2 id="link">link</h2>
+
+<ul>
+  <li><a href="http://gihyo.jp/magazine/SD/archive/2015/201502">Software Design 2015年2月号</a></li>
+  <li><a href="http://postd.cc/why-systemd/">【翻訳】なぜsystemdなのか？</a></li>
+  <li><a href="http://enakai00.hatenablog.com/entry/20110605/1307240161">Control Groups (cgroups)</a></li>
+</ul>

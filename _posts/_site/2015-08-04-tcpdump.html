@@ -1,0 +1,65 @@
+<p><strong>tcpdumpとは</strong>コンピュータのネットワークインターフェースを流れるデータを
+文字通りdumpして中身を見ることを可能にする<strong>古から伝わる</strong>コマンド。</p>
+
+<p>昨今はパケットキャプチャソフトに完全に押されているが、かろうじて現役。</p>
+
+<p>実行オプションと環境によっては短時間に大量のデータが落ちるため容量に注意する必要がある。
+基本的には通信ポートはホストを絞ってdumpする方がいい。</p>
+
+<h2 id="section">1. ネットワークデバイスの確認</h2>
+<p><code>status: active</code>になっているネットワークインターフェースをtcpdumpコマンドの引数に指定する。<br />
+下記の例の場合は<code>en0</code>が対象となる。</p>
+
+<p><code> 
+$ ifconfig
+lo0: flags=8049&lt;UP,LOOPBACK,RUNNING,MULTICAST&gt; mtu 16384
+    options=3&lt;RXCSUM,TXCSUM&gt;
+    inet6 ::1 prefixlen 128
+    inet 127.0.0.1 netmask 0xff000000
+    inet6 fe80::1%lo0 prefixlen 64 scopeid 0x1
+    nd6 options=1&lt;PERFORMNUD&gt;
+gif0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1280
+stf0: flags=0&lt;&gt; mtu 1280
+en0: flags=8863&lt;UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
+    ether 3c:15:c2:d5:c9:5c
+    inet6 fe80::3e15:c2ff:fed5:c95c%en0 prefixlen 64 scopeid 0x4
+    inet 192.168.0.10 netmask 0xffffff00 broadcast 192.168.0.255
+    inet6 240f:76:c06:1:3e15:c2ff:fed5:c95c prefixlen 64 autoconf
+    inet6 240f:76:c06:1:f42e:d6cc:c623:4913 prefixlen 64 autoconf temporary
+    nd6 options=1&lt;PERFORMNUD&gt;
+    media: autoselect
+    status: active
+en1: flags=8963&lt;UP,BROADCAST,SMART,RUNNING,PROMISC,SIMPLEX,MULTICAST&gt; mtu 1500
+    options=60&lt;TSO4,TSO6&gt;
+    ether 72:00:04:37:9a:90
+    media: autoselect &lt;full-duplex&gt;
+    status: inactive
+</code></p>
+
+<h2 id="dump">2. dumpの実行</h2>
+
+<h3 id="section-1">使い方</h3>
+<p>実行にはsudo権限が必要。<code>tcpdump : Couldn't find user 'tcpdump'</code>のエラーが出ないように<code>-Z</code>オプションで
+通信を覗き見る権限を持つユーザーを指定する。</p>
+
+<p><code>
+$ sudo tcpdump -Z &lt;user&gt; -i &lt;interface&gt; -w &lt;filename&gt; -s &lt;data length (default :64KB)&gt; '条件式'
+</code></p>
+
+<h3 id="section-2">使用例</h3>
+
+<p><code>
+$ sudo tcpdump -Z root -i en0 -w 1.dump                     
+$ sudo tcpdump -Z root -i en0 -w 1.dump -s 1600 'port 80'  # port 80を指定
+</code></p>
+
+<h2 id="dump-1">3. dump結果の確認</h2>
+
+<p>dump結果はバイナリで保存されるのでそのままでは<strong>一部を除き</strong>ほとんど何が書かれているかわからない。
+保存したファイルを指定して<code>tcpdump</code>コマンドを介して中身を見る。</p>
+
+<p><code>bash
+$ sudo tcpdump -r 1.dump      # dump結果の確認
+$ sudo tcpdump -r 1.dump -X   # dump結果の確認(ASCII + 16進表示)
+$ sudo tcpdump -r 1.dump 'host smile.example.com'  # 特定のホスト(smile.example.com)との通信を抽出
+</code></p>

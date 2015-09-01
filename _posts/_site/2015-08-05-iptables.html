@@ -1,0 +1,35 @@
+<p><strong>iptablesは</strong>ファイアーウォールの一実装であり、不要な通信経路を遮断し
+必要な通信のみを許可するというセキュリティ機能を提供する。</p>
+
+<p>RHEL7以降は標準ではなくなってしまったが、<strong>まだ</strong>広く使われている。</p>
+
+<p>実行をミスすると操作をしている接続元まで遮断してしまい何もできなくなるので注意。
+もしそうなった時は慌てずにサーバをリブートしよう。設定保存前なら接続できる。</p>
+
+<h2 id="section">設定確認</h2>
+
+<p><code> 
+$ sudo iptables -L --line-numbers
+</code></p>
+
+<h2 id="ip">許可するIPの追加</h2>
+<p>iptablesはhosts.allowなどと同様に上から順番に解釈される。よって接続許可は先頭に、接続拒否は末尾に追加する。</p>
+
+<p><code>
+$ sudo iptables -I INPUT &lt;行番号&gt; -p tcp -s &lt;サーバ名&gt; --dport &lt;ポート番号&gt; -j ACCEPT
+</code></p>
+
+<h2 id="section-1">設定の保存</h2>
+<p><strong>ルールが想定通りであることを確認できたら</strong>サーバ起動時に読み込まれる設定ファイルを更新する。
+以降はサーバを再起動しても同じルールが設定されるようになる。</p>
+
+<p><code>
+$ sudo service iptables save # /etc/sysconfig/iptables に設定が保存される
+</code></p>
+
+<h2 id="section-2">設定の読み込み</h2>
+<p>ファイルからルールを読み込むこともできる。サーバの引っ越し時などに使うこともあるかもしれない。</p>
+
+<p><code>
+$ sudo sh -c 'iptables-restore &lt; /etc/sysconfig/iptables'
+</code></p>
